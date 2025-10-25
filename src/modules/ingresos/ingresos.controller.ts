@@ -1,37 +1,73 @@
-import { Controller, Get, Post, Body, Param, Patch, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Body,
+  Query,
+  ParseIntPipe,
+  UseInterceptors,
+  ClassSerializerInterceptor,
+} from '@nestjs/common';
 import { IngresosService } from './ingresos.service';
 import { CreateIngresoDto } from './dto/create-ingreso.dto';
 import { UpdateIngresoDto } from './dto/update-ingreso.dto';
+import { ResponseIngresoDto } from './dto/response-ingreso.dto';
+import { plainToInstance } from 'class-transformer';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 
+@ApiTags('ingresos')
 @Controller('ingresos')
+@UseInterceptors(ClassSerializerInterceptor)
 export class IngresosController {
   constructor(private readonly ingresosService: IngresosService) {}
 
   @Post()
-  registrarIngreso(@Body() dto: CreateIngresoDto, @Query('usuarioId') usuarioId: string) {
-    return this.ingresosService.registrarIngreso(dto, +usuarioId);
+  @ApiOperation({ summary: 'Registrar ingreso de un contratista' })
+  @ApiQuery({ name: 'usuarioId', type: Number, required: true })
+  @ApiResponse({ status: 201, type: ResponseIngresoDto })
+  async registrarIngreso(@Body() dto: CreateIngresoDto, @Query('usuarioId') usuarioId: string) {
+    const ingreso = await this.ingresosService.registrarIngreso(dto, +usuarioId);
+    return plainToInstance(ResponseIngresoDto, ingreso);
   }
 
   @Post(':contratistaId/salida')
-  registrarSalida(
-    @Param('contratistaId') contratistaId: string,
+  @ApiOperation({ summary: 'Registrar salida de un contratista' })
+  @ApiParam({ name: 'contratistaId', type: Number })
+  @ApiQuery({ name: 'usuarioId', type: Number, required: true })
+  @ApiResponse({ status: 200, type: ResponseIngresoDto })
+  async registrarSalida(
+    @Param('contratistaId', ParseIntPipe) contratistaId: number,
     @Query('usuarioId') usuarioId: string,
   ) {
-    return this.ingresosService.registrarSalida(+contratistaId, +usuarioId);
+    const ingreso = await this.ingresosService.registrarSalida(contratistaId, +usuarioId);
+    return plainToInstance(ResponseIngresoDto, ingreso);
   }
 
   @Get()
-  findAll() {
-    return this.ingresosService.findAll();
+  @ApiOperation({ summary: 'Listar todos los ingresos' })
+  @ApiResponse({ status: 200, type: [ResponseIngresoDto] })
+  async findAll() {
+    const ingresos = await this.ingresosService.findAll();
+    return plainToInstance(ResponseIngresoDto, ingresos);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.ingresosService.findOne(+id);
+  @ApiOperation({ summary: 'Obtener ingreso por ID' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, type: ResponseIngresoDto })
+  async findOne(@Param('id', ParseIntPipe) id: number) {
+    const ingreso = await this.ingresosService.findOne(id);
+    return plainToInstance(ResponseIngresoDto, ingreso);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateIngresoDto) {
-    return this.ingresosService.update(+id, dto);
+  @ApiOperation({ summary: 'Actualizar ingreso por ID' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, type: ResponseIngresoDto })
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIngresoDto) {
+    const ingreso = await this.ingresosService.update(id, dto);
+    return plainToInstance(ResponseIngresoDto, ingreso);
   }
 }

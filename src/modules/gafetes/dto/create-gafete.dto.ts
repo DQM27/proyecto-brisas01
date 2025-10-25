@@ -12,5 +12,5 @@ export class CreateGafeteDto {
 
   @IsOptional()
   @IsInt()
-  contratistaId?: number; // ✅ corregido
+  contratistaId?: number;
 }

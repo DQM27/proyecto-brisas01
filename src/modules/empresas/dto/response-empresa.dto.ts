@@ -1,21 +1,25 @@
-import { Expose } from 'class-transformer';
+// src/modules/empresas/dto/response-empresa.dto.ts
+import { ApiProperty } from '@nestjs/swagger';
 
 export class ResponseEmpresaDto {
-  @Expose()
+  @ApiProperty()
   id: number;
 
-  @Expose()
+  @ApiProperty()
   nombre: string;
 
-  @Expose()
-  direccion: string;
+  @ApiProperty({ required: false })
+  ruc?: string;
 
-  @Expose()
-  telefono: string;
+  @ApiProperty({ required: false })
+  direccion?: string;
 
-  @Expose()
+  @ApiProperty({ required: false })
+  telefono?: string;
+
+  @ApiProperty()
   fechaCreacion: Date;
 
-  @Expose()
+  @ApiProperty()
   fechaActualizacion: Date;
 }

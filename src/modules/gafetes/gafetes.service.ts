@@ -38,14 +38,14 @@ export class GafetesService {
   async findAll(): Promise<Gafete[]> {
     return this.gafeteRepository.find({
       relations: ['contratista'],
-      where: { fechaEliminacion: IsNull() }, // ✅ usar IsNull() en lugar de null
+      where: { fechaEliminacion: IsNull() },
       order: { id: 'DESC' },
     });
   }
 
   async findOne(id: number): Promise<Gafete> {
     const gafete = await this.gafeteRepository.findOne({
-      where: { id, fechaEliminacion: IsNull() }, // ✅ corregido
+      where: { id, fechaEliminacion: IsNull() },
       relations: ['contratista'],
     });
 

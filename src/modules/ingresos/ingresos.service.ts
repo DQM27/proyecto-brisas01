@@ -8,6 +8,7 @@ import { Contratista } from '../contratistas/entities/contratista.entity';
 import { Gafete } from '../gafetes/entities/gafete.entity';
 import { TipoAutorizacion } from '../../common/enums/tipo-autorizacion.enum';
 import { Usuario } from '../usuarios/entities/usuario.entity';
+import { EstadoGafete } from '@common/enums/gafete-estado.enum';
 
 @Injectable()
 export class IngresosService {
@@ -41,7 +42,7 @@ export class IngresosService {
       ? await this.gafeteRepo.findOne({ where: { id: dto.gafeteId } })
       : null;
 
-    if (gafete && gafete.estado !== 'ACTIVO') {
+    if (gafete && gafete.estado !== EstadoGafete.ACTIVO) {
       throw new BadRequestException('El gafete no está disponible.');
     }
 

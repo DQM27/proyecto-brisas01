@@ -15,13 +15,9 @@ export class UsuariosService {
   ) {}
 
   async create(dto: CreateUsuarioDto): Promise<Usuario> {
-    // 🧩 Convertir rol a enum (si llega como string)
-    const rol = dto.rol ? (dto.rol as RolUsuario) : RolUsuario.OPERADOR;
-
-    // 🔒 Hashear contraseña manualmente (aunque la entidad también lo hace)
+    const rol = dto.rol ?? RolUsuario.OPERADOR;
     const hashed = await bcrypt.hash(dto.password, 10);
 
-    // ✅ Crear instancia del usuario correctamente mapeada
     const usuario = this.usuarioRepo.create({
       primerNombre: dto.primerNombre,
       segundoNombre: dto.segundoNombre,
@@ -34,34 +30,31 @@ export class UsuariosService {
       rol,
     });
 
-    return await this.usuarioRepo.save(usuario);
+    return this.usuarioRepo.save(usuario);
   }
 
   async findAll(): Promise<Usuario[]> {
-    return this.usuarioRepo.find({
-      where: { fechaEliminacion: IsNull() },
-    });
+    return this.usuarioRepo.find({ where: { fechaEliminacion: IsNull() } });
   }
 
   async findOne(id: number): Promise<Usuario> {
     const usuario = await this.usuarioRepo.findOne({
       where: { id, fechaEliminacion: IsNull() },
     });
-
-    if (!usuario) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
+    if (!usuario) throw new NotFoundException('Usuario no encontrado');
     return usuario;
+  }
+
+  // ✅ Nuevo método
+  async findByEmail(email: string): Promise<Usuario | null> {
+    return this.usuarioRepo.findOne({
+      where: { email, fechaEliminacion: IsNull() },
+    });
   }
 
   async update(id: number, dto: UpdateUsuarioDto): Promise<Usuario> {
     const usuario = await this.findOne(id);
-
-    // Si se envía password, la hasheamos antes de guardar
-    if (dto.password) {
-      dto.password = await bcrypt.hash(dto.password, 10);
-    }
-
+    if (dto.password) dto.password = await bcrypt.hash(dto.password, 10);
     Object.assign(usuario, dto);
     return this.usuarioRepo.save(usuario);
   }
