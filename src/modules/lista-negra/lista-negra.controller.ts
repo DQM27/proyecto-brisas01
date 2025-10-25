@@ -17,15 +17,19 @@ import { CreateListaNegraDto } from './dto/create-lista-negra.dto';
 import { UpdateListaNegraDto } from './dto/update-lista-negra.dto';
 import { ResponseListaNegraDto } from './dto/response-lista-negra.dto';
 import { plainToInstance } from 'class-transformer';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
+import { AuthRoles } from '@common/decorators/auth-roles.decorator';
+import { RolUsuario } from '@common/enums/rol-usuario.enum';
 
 @ApiTags('lista-negra')
+@ApiBearerAuth('JWT-auth') // ⚡ Esto habilita el token en Swagger
 @Controller('lista-negra')
 @UseInterceptors(ClassSerializerInterceptor)
 export class ListaNegraController {
   constructor(private readonly listaNegraService: ListaNegraService) {}
 
   @Post()
+  @AuthRoles(RolUsuario.ADMIN)
   @ApiOperation({ summary: 'Agregar un registro a la lista negra' })
   @ApiResponse({ status: 201, type: ResponseListaNegraDto })
   async crear(@Body() dto: CreateListaNegraDto) {
@@ -34,6 +38,7 @@ export class ListaNegraController {
   }
 
   @Get()
+  @AuthRoles(RolUsuario.ADMIN, RolUsuario.SEGURIDAD)
   @ApiOperation({ summary: 'Listar todos los registros de la lista negra' })
   @ApiResponse({ status: 200, type: [ResponseListaNegraDto] })
   async obtenerTodos() {
@@ -42,6 +47,7 @@ export class ListaNegraController {
   }
 
   @Get(':id')
+  @AuthRoles(RolUsuario.ADMIN, RolUsuario.SEGURIDAD)
   @ApiOperation({ summary: 'Obtener un registro de la lista negra por ID' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, type: ResponseListaNegraDto })
@@ -51,6 +57,7 @@ export class ListaNegraController {
   }
 
   @Patch(':id')
+  @AuthRoles(RolUsuario.ADMIN)
   @ApiOperation({ summary: 'Actualizar un registro de la lista negra' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, type: ResponseListaNegraDto })
@@ -60,6 +67,7 @@ export class ListaNegraController {
   }
 
   @Patch(':id/retirar')
+  @AuthRoles(RolUsuario.ADMIN)
   @ApiOperation({ summary: 'Retirar un registro de la lista negra (soft delete)' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, type: ResponseListaNegraDto })
@@ -69,6 +77,7 @@ export class ListaNegraController {
   }
 
   @Delete(':id')
+  @AuthRoles(RolUsuario.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar un registro de la lista negra permanentemente' })
   async eliminar(@Param('id', ParseIntPipe) id: number) {

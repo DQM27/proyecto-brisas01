@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { JwtPayload } from '@common/interfaces/jwt-payload.interface';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -12,8 +13,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: any) {
-    // Aquí no necesitas async si no haces await
-    return { userId: payload.sub, email: payload.email, rol: payload.rol };
+  validate(payload: JwtPayload) {
+    // Devuelve solo los campos que quieras exponer en req.user
+    return {
+      email: payload.email,
+      rol: payload.rol,
+      primerNombre: payload.primerNombre,
+      primerApellido: payload.primerApellido,
+    };
   }
 }

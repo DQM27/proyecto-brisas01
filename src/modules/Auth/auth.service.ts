@@ -26,12 +26,22 @@ export class AuthService {
 
   /**
    * Login con email y contraseña
+   * Devuelve un token JWT seguro
    */
   async login(dto: LoginDto) {
     const { email, password } = dto;
     const user = await this.validateUser(email, password);
+
+    // Payload seguro para el token
+    const payload = {
+      email: user.email,
+      rol: user.rol,
+      primerNombre: user.primerNombre,
+      primerApellido: user.primerApellido,
+    };
+
     return {
-      access_token: this.jwtService.sign({ sub: user.id, email: user.email, rol: user.rol }),
+      access_token: this.jwtService.sign(payload),
     };
   }
 }

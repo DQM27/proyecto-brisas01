@@ -20,7 +20,15 @@ async function bootstrap() {
     .setTitle('Control de Acceso API')
     .setDescription('Documentación de la API de Control de Acceso')
     .setVersion('1.0')
-    .addBearerAuth()
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Ingrese su token JWT',
+      },
+      'JWT-auth', // nombre del esquema
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
