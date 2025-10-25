@@ -12,6 +12,8 @@ import { PuntoAccesoModule } from './modules/puntos-acceso/punto-acceso.module';
 import { IngresosModule } from './modules/ingresos/ingresos.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { AuthModule } from './modules/Auth/auth.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
 
 @Module({
   imports: [
@@ -37,6 +39,8 @@ import { AuthModule } from './modules/Auth/auth.module';
       }),
     }),
 
+    ScheduleModule.forRoot(),
+
     // 📦 Módulos del dominio
     AuthModule,
     EmpresasModule,
@@ -47,6 +51,7 @@ import { AuthModule } from './modules/Auth/auth.module';
     PuntoAccesoModule,
     IngresosModule,
     UsuariosModule,
+    NotificacionesModule,
   ],
 })
 export class AppModule {}

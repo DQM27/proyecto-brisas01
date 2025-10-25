@@ -10,8 +10,9 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // elimina propiedades no definidas en DTO
-      forbidNonWhitelisted: false,
+      forbidNonWhitelisted: true, // lanza error si llegan propiedades extras
       transform: true, // transforma automáticamente a los tipos de los DTO
+      transformOptions: { enableImplicitConversion: true }, // convierte string -> number/boolean automáticamente
     }),
   );
 
@@ -27,7 +28,7 @@ async function bootstrap() {
         bearerFormat: 'JWT',
         description: 'Ingrese su token JWT',
       },
-      'JWT-auth', // nombre del esquema
+      'JWT-auth',
     )
     .build();
 

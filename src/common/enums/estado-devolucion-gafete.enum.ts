@@ -3,4 +3,5 @@ export enum EstadoDevolucionGafete {
   DEVUELTO = 'DEVUELTO',
   PERDIDO = 'PERDIDO',
   DAÑADO = 'DAÑADO',
+  BUENO = 'BUENO',
 }

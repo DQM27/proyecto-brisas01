@@ -6,7 +6,6 @@ import {
   Param,
   Body,
   Query,
-  ParseIntPipe,
   UseInterceptors,
   ClassSerializerInterceptor,
 } from '@nestjs/common';
@@ -27,21 +26,24 @@ export class IngresosController {
   @ApiOperation({ summary: 'Registrar ingreso de un contratista' })
   @ApiQuery({ name: 'usuarioId', type: Number, required: true })
   @ApiResponse({ status: 201, type: ResponseIngresoDto })
-  async registrarIngreso(@Body() dto: CreateIngresoDto, @Query('usuarioId') usuarioId: string) {
-    const ingreso = await this.ingresosService.registrarIngreso(dto, +usuarioId);
+  async registrarIngreso(
+    @Body() dto: CreateIngresoDto,
+    @Query('usuarioId') usuarioId: number, // transformación automática gracias a ValidationPipe
+  ) {
+    const ingreso = await this.ingresosService.registrarIngreso(dto, usuarioId);
     return plainToInstance(ResponseIngresoDto, ingreso);
   }
 
-  @Post(':contratistaId/salida')
+  @Patch(':contratistaId/salida')
   @ApiOperation({ summary: 'Registrar salida de un contratista' })
   @ApiParam({ name: 'contratistaId', type: Number })
   @ApiQuery({ name: 'usuarioId', type: Number, required: true })
   @ApiResponse({ status: 200, type: ResponseIngresoDto })
   async registrarSalida(
-    @Param('contratistaId', ParseIntPipe) contratistaId: number,
-    @Query('usuarioId') usuarioId: string,
+    @Param('contratistaId') contratistaId: number, // transformación automática
+    @Query('usuarioId') usuarioId: number, // transformación automática
   ) {
-    const ingreso = await this.ingresosService.registrarSalida(contratistaId, +usuarioId);
+    const ingreso = await this.ingresosService.registrarSalida(contratistaId, usuarioId);
     return plainToInstance(ResponseIngresoDto, ingreso);
   }
 
@@ -57,7 +59,7 @@ export class IngresosController {
   @ApiOperation({ summary: 'Obtener ingreso por ID' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, type: ResponseIngresoDto })
-  async findOne(@Param('id', ParseIntPipe) id: number) {
+  async findOne(@Param('id') id: number) {
     const ingreso = await this.ingresosService.findOne(id);
     return plainToInstance(ResponseIngresoDto, ingreso);
   }
@@ -66,7 +68,7 @@ export class IngresosController {
   @ApiOperation({ summary: 'Actualizar ingreso por ID' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, type: ResponseIngresoDto })
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIngresoDto) {
+  async update(@Param('id') id: number, @Body() dto: UpdateIngresoDto) {
     const ingreso = await this.ingresosService.update(id, dto);
     return plainToInstance(ResponseIngresoDto, ingreso);
   }
