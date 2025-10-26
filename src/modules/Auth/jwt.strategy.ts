@@ -14,8 +14,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   validate(payload: JwtPayload) {
-    // Devuelve solo los campos que quieras exponer en req.user
     return {
+      sub: payload.sub,
       email: payload.email,
       rol: payload.rol,
       primerNombre: payload.primerNombre,

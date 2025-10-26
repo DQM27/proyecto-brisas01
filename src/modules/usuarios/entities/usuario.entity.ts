@@ -43,19 +43,29 @@ export class Usuario extends BaseEntity {
   @Column({ default: true })
   activo: boolean;
 
+  /**
+   * Antes de insertar o actualizar, hash de la contraseña
+   * Solo si la contraseña es nueva o fue modificada
+   */
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword(): Promise<void> {
-    if (this.password) {
+    if (this.password && !this.password.startsWith('$2b$')) {
       const salt = await bcrypt.genSalt(10);
       this.password = await bcrypt.hash(this.password, salt);
     }
   }
 
+  /**
+   * Validar contraseña
+   */
   async validatePassword(password: string): Promise<boolean> {
     return await bcrypt.compare(password, this.password);
   }
 
+  /**
+   * Retorna el nombre completo del usuario
+   */
   obtenerNombreCompleto(): string {
     return `${this.primerNombre} ${this.segundoNombre || ''} ${this.primerApellido} ${this.segundoApellido || ''}`
       .replace(/\s+/g, ' ')

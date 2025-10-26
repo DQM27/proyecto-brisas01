@@ -31,10 +31,12 @@ export class CreateUsuarioDto {
   telefono?: string;
 
   @IsNotEmpty()
-  @MinLength(6)
+  @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
   password: string;
 
   @IsOptional()
-  @IsEnum(RolUsuario)
+  @IsEnum(RolUsuario, {
+    message: 'El rol debe ser ADMIN, SUPERVISOR, SEGURIDAD u OPERADOR',
+  })
   rol?: RolUsuario;
 }

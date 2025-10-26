@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { Usuario } from './entities/usuario.entity';
@@ -13,10 +13,6 @@ export class UsuariosService {
     private readonly usuarioRepo: Repository<Usuario>,
   ) {}
 
-  /**
-   * Crear un nuevo usuario
-   * El hash de la contraseña lo hace la entidad automáticamente
-   */
   async create(dto: CreateUsuarioDto): Promise<Usuario> {
     const rol = dto.rol ?? RolUsuario.OPERADOR;
 
@@ -28,23 +24,17 @@ export class UsuariosService {
       cedula: dto.cedula,
       email: dto.email,
       telefono: dto.telefono,
-      password: dto.password, // No hacer hash aquí
+      password: dto.password,
       rol,
     });
 
     return this.usuarioRepo.save(usuario);
   }
 
-  /**
-   * Listar todos los usuarios activos (no eliminados)
-   */
   async findAll(): Promise<Usuario[]> {
     return this.usuarioRepo.find({ where: { fechaEliminacion: IsNull() } });
   }
 
-  /**
-   * Buscar un usuario por ID
-   */
   async findOne(id: number): Promise<Usuario> {
     const usuario = await this.usuarioRepo.findOne({
       where: { id, fechaEliminacion: IsNull() },
@@ -53,36 +43,42 @@ export class UsuariosService {
     return usuario;
   }
 
-  /**
-   * Buscar un usuario por email
-   */
   async findByEmail(email: string): Promise<Usuario | null> {
     return this.usuarioRepo.findOne({
       where: { email, fechaEliminacion: IsNull() },
     });
   }
 
-  /**
-   * Actualizar usuario
-   * La entidad hará hash automático si viene password
-   */
   async update(id: number, dto: UpdateUsuarioDto): Promise<Usuario> {
     const usuario = await this.findOne(id);
-    Object.assign(usuario, dto); // La entidad maneja hash si se actualiza password
+    Object.assign(usuario, dto);
     return this.usuarioRepo.save(usuario);
   }
 
-  /**
-   * Eliminación lógica
-   */
+  async resetPassword(id: number, nuevaPassword: string): Promise<Usuario> {
+    const usuario = await this.findOne(id);
+    usuario.password = nuevaPassword;
+    return this.usuarioRepo.save(usuario);
+  }
+
+  async changePassword(
+    id: number,
+    passwordActual: string,
+    nuevaPassword: string,
+  ): Promise<Usuario> {
+    const usuario = await this.findOne(id);
+    const isValid = await usuario.validatePassword(passwordActual);
+    if (!isValid) throw new UnauthorizedException('Contraseña actual incorrecta');
+
+    usuario.password = nuevaPassword;
+    return this.usuarioRepo.save(usuario);
+  }
+
   async softDelete(id: number): Promise<void> {
     const usuario = await this.findOne(id);
     await this.usuarioRepo.softRemove(usuario);
   }
 
-  /**
-   * Restaurar usuario eliminado lógicamente
-   */
   async restore(id: number): Promise<Usuario> {
     await this.usuarioRepo.restore(id);
     return this.findOne(id);

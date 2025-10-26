@@ -1,3 +1,4 @@
+// src/modules/auth/auth.module.ts
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -18,9 +19,7 @@ import { JwtStrategy } from './jwt.strategy';
         const expiresIn = parseInt(config.get<string>('JWT_EXPIRES_IN', '3600'), 10);
         return {
           secret: config.get<string>('JWT_SECRET'),
-          signOptions: {
-            expiresIn, // ahora es un número (en segundos)
-          },
+          signOptions: { expiresIn },
         };
       },
     }),

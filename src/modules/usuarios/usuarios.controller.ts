@@ -1,20 +1,28 @@
+// src/modules/usuarios/usuarios.controller.ts
 import {
   Controller,
   Get,
   Post,
-  Body,
   Patch,
-  Param,
   Delete,
+  Body,
+  Param,
+  Req,
   UseInterceptors,
   ClassSerializerInterceptor,
+  UseGuards,
 } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
-import { plainToInstance } from 'class-transformer';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResponseUsuarioDto } from './dto/response-usuario.dto';
+import { plainToInstance } from 'class-transformer';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
+import { JwtPayload } from '@common/interfaces/jwt-payload.interface';
+import { Request } from 'express';
 
 @ApiTags('usuarios')
 @Controller('usuarios')
@@ -38,6 +46,15 @@ export class UsuariosController {
     return plainToInstance(ResponseUsuarioDto, usuarios, { excludeExtraneousValues: true });
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Obtener usuario por ID' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, type: ResponseUsuarioDto })
+  async findOne(@Param('id') id: string) {
+    const usuario = await this.usuariosService.findOne(+id);
+    return plainToInstance(ResponseUsuarioDto, usuario, { excludeExtraneousValues: true });
+  }
+
   @Get('email/:email')
   @ApiOperation({ summary: 'Obtener usuario por email' })
   @ApiParam({ name: 'email', type: String })
@@ -47,15 +64,6 @@ export class UsuariosController {
     if (!usuario) {
       return { message: 'Usuario no encontrado' };
     }
-    return plainToInstance(ResponseUsuarioDto, usuario, { excludeExtraneousValues: true });
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Obtener usuario por ID' })
-  @ApiParam({ name: 'id', type: Number })
-  @ApiResponse({ status: 200, type: ResponseUsuarioDto })
-  async findOne(@Param('id') id: string) {
-    const usuario = await this.usuariosService.findOne(+id);
     return plainToInstance(ResponseUsuarioDto, usuario, { excludeExtraneousValues: true });
   }
 
@@ -84,5 +92,25 @@ export class UsuariosController {
   async restore(@Param('id') id: string) {
     const usuario = await this.usuariosService.restore(+id);
     return plainToInstance(ResponseUsuarioDto, usuario, { excludeExtraneousValues: true });
+  }
+
+  @Post(':id/reset-password')
+  @ApiOperation({ summary: 'Resetear contraseña de un usuario' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, type: ResponseUsuarioDto })
+  async resetPassword(@Param('id') id: string, @Body() dto: ResetPasswordDto) {
+    const usuario = await this.usuariosService.resetPassword(+id, dto.nuevaPassword);
+    return plainToInstance(ResponseUsuarioDto, usuario, { excludeExtraneousValues: true });
+  }
+
+  // 🔹 Nuevo endpoint: cambio de contraseña del usuario autenticado
+  @Patch('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Cambiar la contraseña del usuario autenticado' })
+  @ApiResponse({ status: 200, description: 'Contraseña cambiada exitosamente' })
+  async changePassword(@Req() req: Request & { user: JwtPayload }, @Body() dto: ChangePasswordDto) {
+    const userId = req.user.sub;
+    await this.usuariosService.changePassword(userId, dto.passwordActual, dto.nuevaPassword);
+    return { message: 'Contraseña cambiada exitosamente' };
   }
 }

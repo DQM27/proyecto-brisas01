@@ -13,7 +13,6 @@ import { IngresosModule } from './modules/ingresos/ingresos.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { AuthModule } from './modules/Auth/auth.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
 
 @Module({
   imports: [
@@ -51,7 +50,6 @@ import { NotificacionesModule } from './modules/notificaciones/notificaciones.mo
     PuntoAccesoModule,
     IngresosModule,
     UsuariosModule,
-    NotificacionesModule,
   ],
 })
 export class AppModule {}

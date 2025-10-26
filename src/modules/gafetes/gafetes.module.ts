@@ -10,6 +10,9 @@ import { GafetesController } from './gafetes.controller';
   imports: [TypeOrmModule.forFeature([Gafete, HistorialGafete, Contratista])],
   controllers: [GafetesController],
   providers: [GafetesService],
-  exports: [GafetesService],
+  exports: [
+    GafetesService, // si quieres usar el service en otros módulos
+    TypeOrmModule, // ✅ exporta los repositories para que otros módulos los puedan inyectar
+  ],
 })
 export class GafetesModule {}
