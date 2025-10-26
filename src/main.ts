@@ -4,7 +4,13 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule);
+
+  // 🔹 CORS configurado para frontend con credentials
+  app.enableCors({
+    origin: 'http://localhost:3001', // <- tu frontend
+    credentials: true, // <- permite enviar cookies con las peticiones
+  });
 
   // 🔹 Validación global de DTOs
   app.useGlobalPipes(

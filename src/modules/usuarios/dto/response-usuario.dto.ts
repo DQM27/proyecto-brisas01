@@ -10,13 +10,29 @@ export class ResponseUsuarioDto {
   @Expose()
   primerNombre: string;
 
+  @ApiProperty({ example: 'Carlos', required: false })
+  @Expose()
+  segundoNombre?: string;
+
   @ApiProperty({ example: 'Perez' })
   @Expose()
   primerApellido: string;
 
+  @ApiProperty({ example: 'González', required: false })
+  @Expose()
+  segundoApellido?: string;
+
   @ApiProperty({ example: 'juan.perez@example.com' })
   @Expose()
   email: string;
+
+  @ApiProperty({ example: '1-2345-6789' })
+  @Expose()
+  cedula: string;
+
+  @ApiProperty({ example: '8888-8888', required: false })
+  @Expose()
+  telefono?: string;
 
   @ApiProperty({ example: 'Admin', required: false })
   @Expose()

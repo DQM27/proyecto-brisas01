@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Usuario } from './entities/usuario.entity';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
@@ -32,12 +32,17 @@ export class UsuariosService {
   }
 
   async findAll(): Promise<Usuario[]> {
-    return this.usuarioRepo.find({ where: { fechaEliminacion: IsNull() } });
+    return this.usuarioRepo.find({ where: { activo: true } });
+  }
+
+  async findAllIncludingDeleted(): Promise<Usuario[]> {
+    // Devuelve TODOS los usuarios (activos e inactivos)
+    return this.usuarioRepo.find();
   }
 
   async findOne(id: number): Promise<Usuario> {
     const usuario = await this.usuarioRepo.findOne({
-      where: { id, fechaEliminacion: IsNull() },
+      where: { id, activo: true },
     });
     if (!usuario) throw new NotFoundException('Usuario no encontrado');
     return usuario;
@@ -45,7 +50,7 @@ export class UsuariosService {
 
   async findByEmail(email: string): Promise<Usuario | null> {
     return this.usuarioRepo.findOne({
-      where: { email, fechaEliminacion: IsNull() },
+      where: { email, activo: true },
     });
   }
 
@@ -75,12 +80,37 @@ export class UsuariosService {
   }
 
   async softDelete(id: number): Promise<void> {
-    const usuario = await this.findOne(id);
-    await this.usuarioRepo.softRemove(usuario);
+    const usuario = await this.usuarioRepo.findOne({
+      where: { id },
+    });
+
+    if (!usuario) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    // Si ya está inactivo, no hacer nada (idempotente)
+    if (!usuario.activo) {
+      return;
+    }
+
+    // Simplemente marcar como inactivo
+    usuario.activo = false;
+    await this.usuarioRepo.save(usuario);
   }
 
   async restore(id: number): Promise<Usuario> {
-    await this.usuarioRepo.restore(id);
-    return this.findOne(id);
+    const usuario = await this.usuarioRepo.findOne({
+      where: { id },
+    });
+
+    if (!usuario) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    // Marcar como activo
+    usuario.activo = true;
+    await this.usuarioRepo.save(usuario);
+
+    return usuario;
   }
 }

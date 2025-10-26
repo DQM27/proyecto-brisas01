@@ -1,4 +1,3 @@
-// src/modules/usuarios/usuarios.controller.ts
 import {
   Controller,
   Get,
@@ -7,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query, // ⬅️ AGREGADO
   Req,
   UseInterceptors,
   ClassSerializerInterceptor,
@@ -19,7 +19,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResponseUsuarioDto } from './dto/response-usuario.dto';
 import { plainToInstance } from 'class-transformer';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger'; // ⬅️ ApiQuery agregado
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { JwtPayload } from '@common/interfaces/jwt-payload.interface';
 import { Request } from 'express';
@@ -40,9 +40,18 @@ export class UsuariosController {
 
   @Get()
   @ApiOperation({ summary: 'Listar todos los usuarios' })
+  @ApiQuery({
+    name: 'includeDeleted',
+    required: false,
+    type: String,
+    description: 'Incluir usuarios eliminados (true/false)',
+  })
   @ApiResponse({ status: 200, type: [ResponseUsuarioDto] })
-  async findAll() {
-    const usuarios = await this.usuariosService.findAll();
+  async findAll(@Query('includeDeleted') includeDeleted?: string) {
+    const usuarios =
+      includeDeleted === 'true'
+        ? await this.usuariosService.findAllIncludingDeleted()
+        : await this.usuariosService.findAll();
     return plainToInstance(ResponseUsuarioDto, usuarios, { excludeExtraneousValues: true });
   }
 
@@ -103,7 +112,6 @@ export class UsuariosController {
     return plainToInstance(ResponseUsuarioDto, usuario, { excludeExtraneousValues: true });
   }
 
-  // 🔹 Nuevo endpoint: cambio de contraseña del usuario autenticado
   @Patch('change-password')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Cambiar la contraseña del usuario autenticado' })
