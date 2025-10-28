@@ -1,5 +1,5 @@
 import { IsEnum, IsInt, IsOptional, IsString, Min, MaxLength } from 'class-validator';
-import { GrupoRiesgo, NivelRiesgo, CausaListaNegra } from '../enums/lista-negra.enums';
+import { GrupoRiesgo, NivelRiesgo, CausaListaNegra } from '../../../common/enums/lista-negra.enums';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateListaNegraDto {

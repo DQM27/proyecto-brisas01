@@ -1,7 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { Contratista } from '../../contratistas/entities/contratista.entity';
-import { GrupoRiesgo, NivelRiesgo, CausaListaNegra } from '../enums/lista-negra.enums';
+import { GrupoRiesgo, NivelRiesgo, CausaListaNegra } from '../../../common/enums/lista-negra.enums';
 
 @Entity('lista_negra')
 export class ListaNegra extends BaseEntity {

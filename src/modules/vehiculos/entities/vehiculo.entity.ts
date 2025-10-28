@@ -6,12 +6,12 @@ import { TipoVehiculo } from '../../../common/enums/tipo-vehiculo.enum';
 @Entity('vehiculos')
 export class Vehiculo extends BaseEntity {
   @ManyToOne(() => Contratista, (contratista) => contratista.vehiculos, {
-    onDelete: 'SET NULL',
-    nullable: true,
+    onDelete: 'CASCADE', // o 'RESTRICT' según tu lógica
+    nullable: false, // obligatorio
   })
   @JoinColumn({ name: 'contratista_id' })
   @Index('idx_vehiculo_contratista')
-  contratista?: Contratista;
+  contratista: Contratista;
 
   @Column({
     type: 'simple-enum',
@@ -37,4 +37,7 @@ export class Vehiculo extends BaseEntity {
 
   @Column({ name: 'marchamo_al_dia', default: false })
   marchamoAlDia: boolean;
+
+  @Column({ default: true })
+  activo: boolean;
 }

@@ -4,7 +4,7 @@ import { Empresa } from '../../../modules/empresas/entities/empresa.entity';
 import { Vehiculo } from '../../../modules/vehiculos/entities/vehiculo.entity';
 import { Ingreso } from '../../../modules/ingresos/entities/ingreso.entity';
 import { ListaNegra } from '../../../modules/lista-negra/entities/lista-negra.entity';
-import { Gafete } from '../../../modules/gafetes/entities/gafete.entity'; // 👈 IMPORTANTE
+import { Gafete } from '../../../modules/gafetes/entities/gafete.entity';
 
 @Entity('contratistas')
 export class Contratista extends BaseEntity {
@@ -54,7 +54,6 @@ export class Contratista extends BaseEntity {
   @OneToMany(() => ListaNegra, (ln) => ln.contratista)
   entradasListaNegra: ListaNegra[];
 
-  // 👇 Nueva relación para corregir tu error
   @OneToMany(() => Gafete, (gafete) => gafete.contratista)
   gafetes: Gafete[];
 

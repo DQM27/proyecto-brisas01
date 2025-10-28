@@ -18,7 +18,7 @@ export class Usuario extends BaseEntity {
   @Column({ name: 'segundo_apellido', length: 100, nullable: true })
   segundoApellido?: string;
 
-  @Column({ unique: true, length: 20 })
+  @Column({ unique: true, length: 12 })
   @Index('idx_usuario_cedula')
   cedula: string;
 
@@ -43,10 +43,6 @@ export class Usuario extends BaseEntity {
   @Column({ default: true })
   activo: boolean;
 
-  /**
-   * Antes de insertar o actualizar, hash de la contraseña
-   * Solo si la contraseña es nueva o fue modificada
-   */
   @BeforeInsert()
   @BeforeUpdate()
   async hashPassword(): Promise<void> {
@@ -56,16 +52,10 @@ export class Usuario extends BaseEntity {
     }
   }
 
-  /**
-   * Validar contraseña
-   */
   async validatePassword(password: string): Promise<boolean> {
     return await bcrypt.compare(password, this.password);
   }
 
-  /**
-   * Retorna el nombre completo del usuario
-   */
   obtenerNombreCompleto(): string {
     return `${this.primerNombre} ${this.segundoNombre || ''} ${this.primerApellido} ${this.segundoApellido || ''}`
       .replace(/\s+/g, ' ')

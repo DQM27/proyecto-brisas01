@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
   UseInterceptors,
   ClassSerializerInterceptor,
 } from '@nestjs/common';
@@ -14,7 +15,7 @@ import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 import { ResponseEmpresaDto } from './dto/response-empresa.dto';
 import { plainToInstance } from 'class-transformer';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('empresas')
 @Controller('empresas')
@@ -22,20 +23,27 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 export class EmpresasController {
   constructor(private readonly empresasService: EmpresasService) {}
 
+  // 📌 Solo ADMIN podrá crear empresas
   @Post()
-  @ApiOperation({ summary: 'Crear una nueva empresa' })
+  @ApiOperation({ summary: 'Crear una empresa (ADMIN)' })
   @ApiResponse({ status: 201, type: ResponseEmpresaDto })
   async create(@Body() dto: CreateEmpresaDto) {
     const empresa = await this.empresasService.create(dto);
-    return plainToInstance(ResponseEmpresaDto, empresa); // <- aquí quitamos excludeExtraneousValues
+    return plainToInstance(ResponseEmpresaDto, empresa, { excludeExtraneousValues: true });
   }
 
+  // 📌 Listar con opción de incluir eliminadas (solo ADMIN en futuro)
   @Get()
-  @ApiOperation({ summary: 'Listar todas las empresas' })
+  @ApiOperation({ summary: 'Listar empresas' })
+  @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean })
   @ApiResponse({ status: 200, type: [ResponseEmpresaDto] })
-  async findAll() {
-    const empresas = await this.empresasService.findAll();
-    return plainToInstance(ResponseEmpresaDto, empresas); // <- aquí también
+  async findAll(@Query('includeDeleted') includeDeleted?: string) {
+    const empresas =
+      includeDeleted === 'true'
+        ? await this.empresasService.findAllIncludingDeleted()
+        : await this.empresasService.findAll();
+
+    return plainToInstance(ResponseEmpresaDto, empresas, { excludeExtraneousValues: true });
   }
 
   @Get(':id')
@@ -44,33 +52,36 @@ export class EmpresasController {
   @ApiResponse({ status: 200, type: ResponseEmpresaDto })
   async findOne(@Param('id') id: string) {
     const empresa = await this.empresasService.findOne(+id);
-    return plainToInstance(ResponseEmpresaDto, empresa); // <- y aquí
+    return plainToInstance(ResponseEmpresaDto, empresa, { excludeExtraneousValues: true });
   }
 
+  // 📌 Solo ADMIN podrá actualizar empresa
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar empresa por ID' })
+  @ApiOperation({ summary: 'Actualizar empresa (ADMIN)' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, type: ResponseEmpresaDto })
   async update(@Param('id') id: string, @Body() dto: UpdateEmpresaDto) {
     const empresa = await this.empresasService.update(+id, dto);
-    return plainToInstance(ResponseEmpresaDto, empresa); // <- aquí
+    return plainToInstance(ResponseEmpresaDto, empresa, { excludeExtraneousValues: true });
   }
 
+  // 📌 Solo ADMIN podrá eliminar lógicamente
   @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar lógicamente una empresa' })
+  @ApiOperation({ summary: 'Eliminar empresa (ADMIN)' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Empresa eliminada lógicamente' })
   async softDelete(@Param('id') id: string) {
     await this.empresasService.softDelete(+id);
-    return { message: 'Empresa eliminada lógicamente' };
+    return { message: 'Empresa eliminada correctamente' };
   }
 
+  // 📌 Solo ADMIN podrá restaurar
   @Post(':id/restore')
-  @ApiOperation({ summary: 'Restaurar empresa eliminada lógicamente' })
+  @ApiOperation({ summary: 'Restaurar una empresa (ADMIN)' })
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, type: ResponseEmpresaDto })
   async restore(@Param('id') id: string) {
     const empresa = await this.empresasService.restore(+id);
-    return plainToInstance(ResponseEmpresaDto, empresa); // <- y aquí
+    return plainToInstance(ResponseEmpresaDto, empresa, { excludeExtraneousValues: true });
   }
 }

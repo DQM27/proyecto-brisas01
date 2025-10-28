@@ -8,18 +8,9 @@ export class ResponseEmpresaDto {
   @ApiProperty()
   nombre: string;
 
-  @ApiProperty({ required: false })
-  ruc?: string;
-
-  @ApiProperty({ required: false })
-  direccion?: string;
-
-  @ApiProperty({ required: false })
-  telefono?: string;
+  @ApiProperty()
+  createdAt: Date;
 
   @ApiProperty()
-  fechaCreacion: Date;
-
-  @ApiProperty()
-  fechaActualizacion: Date;
+  updatedAt: Date;
 }

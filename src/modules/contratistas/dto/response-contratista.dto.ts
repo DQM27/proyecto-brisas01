@@ -26,25 +26,17 @@ export class ResponseContratistaDto {
   @Expose()
   cedula: string;
 
-  @ApiProperty({ example: '8888-9999', required: false })
+  @ApiProperty({ example: 1 })
   @Expose()
-  telefono?: string;
-
-  @ApiProperty({ example: 2, required: false })
-  @Expose()
-  empresaId?: number;
+  empresaId: number;
 
   @ApiProperty({ example: '2025-10-20T00:00:00.000Z', required: false })
   @Expose()
-  fechaVencimientoPraind?: string;
+  fechaVencimientoPraind?: Date;
 
-  @ApiProperty({ example: true, required: false })
+  @ApiProperty({ example: true })
   @Expose()
-  activo?: boolean;
-
-  @ApiProperty({ example: 'Notas adicionales', required: false })
-  @Expose()
-  notas?: string;
+  activo: boolean;
 
   @ApiProperty({ example: '2025-01-01T12:00:00.000Z' })
   @Expose()
@@ -53,8 +45,4 @@ export class ResponseContratistaDto {
   @ApiProperty({ example: '2025-01-01T12:00:00.000Z' })
   @Expose()
   fechaActualizacion: Date;
-
-  @ApiProperty({ example: null, required: false })
-  @Expose()
-  fechaEliminacion?: Date;
 }

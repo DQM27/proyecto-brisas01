@@ -1,5 +1,6 @@
 import { Expose } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { RolUsuario } from '@common/enums/rol-usuario.enum';
 
 export class ResponseUsuarioDto {
   @ApiProperty({ example: 1 })
@@ -26,17 +27,20 @@ export class ResponseUsuarioDto {
   @Expose()
   email: string;
 
-  @ApiProperty({ example: '1-2345-6789' })
+  @ApiProperty({ example: '1-0885-0126' })
   @Expose()
   cedula: string;
 
-  @ApiProperty({ example: '8888-8888', required: false })
+  @ApiProperty({ example: '7006-8596', required: false })
   @Expose()
   telefono?: string;
 
-  @ApiProperty({ example: 'Admin', required: false })
+  @ApiProperty({
+    example: RolUsuario.ADMIN,
+    enum: RolUsuario,
+  })
   @Expose()
-  rol?: string;
+  rol: RolUsuario;
 
   @ApiProperty({ example: true })
   @Expose()
@@ -49,8 +53,4 @@ export class ResponseUsuarioDto {
   @ApiProperty({ example: '2025-10-25T08:05:00.000Z' })
   @Expose()
   fechaActualizacion: Date;
-
-  @ApiProperty({ example: null, required: false })
-  @Expose()
-  fechaEliminacion?: Date;
 }

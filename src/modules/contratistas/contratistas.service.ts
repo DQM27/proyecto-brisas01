@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Contratista } from './entities/contratista.entity';
 import { CreateContratistaDto } from './dto/create-contratista.dto';
 import { UpdateContratistaDto } from './dto/update-contratista.dto';
@@ -11,100 +11,94 @@ export class ContratistasService {
   constructor(
     @InjectRepository(Contratista)
     private readonly contratistaRepository: Repository<Contratista>,
-
     @InjectRepository(Empresa)
     private readonly empresaRepository: Repository<Empresa>,
   ) {}
 
-  /**
-   * Crear un nuevo contratista
-   */
   async create(dto: CreateContratistaDto): Promise<Contratista> {
-    const contratista = this.contratistaRepository.create(dto as Partial<Contratista>);
+    await this.ensureCedulaIsUnique(dto.cedula);
 
-    if (dto.empresaId) {
-      const empresa = await this.empresaRepository.findOneBy({
-        id: dto.empresaId,
-      });
-      if (!empresa) {
-        throw new NotFoundException('Empresa no encontrada');
-      }
-      contratista.empresa = empresa;
+    const empresa = await this.empresaRepository.findOneBy({ id: dto.empresaId });
+    if (!empresa) throw new NotFoundException('Empresa no encontrada');
+
+    const contratista = this.contratistaRepository.create({ ...dto, empresa });
+
+    try {
+      return await this.contratistaRepository.save(contratista);
+    } catch (error) {
+      this.handleDatabaseError(error);
     }
-
-    return this.contratistaRepository.save(contratista);
   }
 
-  /**
-   * Obtener todos los contratistas activos (no eliminados)
-   */
+  private async ensureCedulaIsUnique(cedula: string): Promise<void> {
+    const exists = await this.contratistaRepository.findOne({ where: { cedula } });
+    if (exists) throw new BadRequestException('La cédula ya está registrada');
+  }
+
+  private handleDatabaseError(error: any): never {
+    if (error.code === '23505' && error.detail.includes('cedula')) {
+      throw new BadRequestException('La cédula ya está registrada');
+    }
+    throw new BadRequestException('Error al guardar el contratista');
+  }
+
   async findAll(): Promise<Contratista[]> {
     return this.contratistaRepository.find({
       relations: ['empresa'],
-      where: { fechaEliminacion: IsNull() },
+      where: { activo: true },
       order: { id: 'DESC' },
     });
   }
 
-  /**
-   * Obtener un contratista específico
-   */
-  async findOne(id: number): Promise<Contratista> {
+  async findOne(id: number, incluirInactivos = false): Promise<Contratista> {
+    if (!id || id <= 0) throw new BadRequestException('ID inválido');
+
+    const where: any = { id };
+    if (!incluirInactivos) where.activo = true;
+
     const contratista = await this.contratistaRepository.findOne({
-      where: { id, fechaEliminacion: IsNull() },
+      where,
       relations: ['empresa'],
     });
 
-    if (!contratista) {
-      throw new NotFoundException('Contratista no encontrado');
-    }
+    if (!contratista) throw new NotFoundException(`Contratista con ID ${id} no encontrado`);
 
     return contratista;
   }
 
-  /**
-   * Actualizar un contratista
-   */
   async update(id: number, dto: UpdateContratistaDto): Promise<Contratista> {
     const contratista = await this.findOne(id);
+
     Object.assign(contratista, dto);
 
-    if (dto.empresaId) {
-      const empresa = await this.empresaRepository.findOneBy({
-        id: dto.empresaId,
-      });
-      if (!empresa) {
-        throw new NotFoundException('Empresa no encontrada');
-      }
+    if (dto.empresaId !== undefined) {
+      const empresa = await this.empresaRepository.findOne({ where: { id: dto.empresaId } });
+      if (!empresa) throw new NotFoundException(`Empresa con ID ${dto.empresaId} no encontrada`);
       contratista.empresa = empresa;
     }
 
-    return this.contratistaRepository.save(contratista);
+    try {
+      return await this.contratistaRepository.save(contratista);
+    } catch (error) {
+      if (error.code === '23505')
+        throw new BadRequestException('El contratista ya existe con estos datos');
+      throw error;
+    }
   }
 
-  /**
-   * Eliminación lógica (soft delete)
-   */
   async softDelete(id: number): Promise<void> {
     const contratista = await this.findOne(id);
-    contratista.fechaEliminacion = new Date();
+    if (!contratista.activo) throw new BadRequestException('El contratista ya está inactivo');
+
+    contratista.activo = false;
     await this.contratistaRepository.save(contratista);
   }
 
-  /**
-   * Restaurar un contratista eliminado
-   */
   async restore(id: number): Promise<void> {
-    const contratista = await this.contratistaRepository.findOne({
-      where: { id },
-      withDeleted: true,
-    });
+    const contratista = await this.findOne(id, true);
+    if (contratista.activo) throw new BadRequestException('El contratista ya está activo');
 
-    if (!contratista) {
-      throw new NotFoundException('Contratista no encontrado');
-    }
-
-    contratista.fechaEliminacion = undefined;
+    contratista.activo = true;
     await this.contratistaRepository.save(contratista);
   }
 }

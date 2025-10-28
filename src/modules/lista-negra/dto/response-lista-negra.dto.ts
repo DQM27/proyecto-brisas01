@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import { GrupoRiesgo, NivelRiesgo, CausaListaNegra } from '../enums/lista-negra.enums';
+import { GrupoRiesgo, NivelRiesgo, CausaListaNegra } from '../../../common/enums/lista-negra.enums';
 
 export class ResponseListaNegraDto {
   @ApiProperty({ example: 1 })

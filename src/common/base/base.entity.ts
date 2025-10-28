@@ -8,8 +8,8 @@ import {
 /**
  * Entidad base para heredar campos comunes:
  * - ID autogenerado
- * - Trazabilidad (creación, actualización)
- * - Eliminación lógica (soft delete)
+ * - Fechas automáticas (creación/actualización)
+ * - Eliminación lógica (soft delete con fecha_eliminacion)
  */
 export abstract class BaseEntity {
   @PrimaryGeneratedColumn()
@@ -21,7 +21,6 @@ export abstract class BaseEntity {
   @UpdateDateColumn({ name: 'fecha_actualizacion' })
   fechaActualizacion: Date;
 
-  // 👇 Permite NULL en BD y también en TypeScript
   @DeleteDateColumn({ name: 'fecha_eliminacion', nullable: true })
   fechaEliminacion?: Date | null;
 
