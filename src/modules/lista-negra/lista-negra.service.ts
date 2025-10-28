@@ -29,10 +29,10 @@ export class ListaNegraService {
       grupoRiesgo: dto.grupoRiesgo,
       causa: dto.causa,
       nivelRiesgo: dto.nivelRiesgo,
-      observaciones: dto.observaciones ?? undefined, // ✅ corregido
+      observaciones: dto.observaciones ?? undefined,
     });
 
-    entrada.contratista = contratista; // ✅ asignación fuera del create()
+    entrada.contratista = contratista;
 
     return this.listaNegraRepo.save(entrada);
   }

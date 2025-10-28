@@ -1,177 +1,297 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, DataSource, IsNull } from 'typeorm';
 import { Ingreso } from './entities/ingreso.entity';
 import { CreateIngresoDto } from './dto/create-ingreso.dto';
 import { UpdateIngresoDto } from './dto/update-ingreso.dto';
-import { Contratista } from '../contratistas/entities/contratista.entity';
-import { Gafete } from '../gafetes/entities/gafete.entity';
 import { HistorialGafete } from '../gafetes/entities/historial-gafete.entity';
-import { TipoAutorizacion } from '../../common/enums/tipo-autorizacion.enum';
-import { Usuario } from '../usuarios/entities/usuario.entity';
-import { EstadoGafete } from '@common/enums/gafete-estado.enum';
+import { TipoAutorizacion } from '@common/enums/tipo-autorizacion.enum';
 import { EstadoDevolucionGafete } from '@common/enums/estado-devolucion-gafete.enum';
+import { IngresoValidationService } from './ingreso-validation.service';
+import { IngresoNoEncontradoException } from './ingresos.exceptions';
 
+/**
+ * Servicio principal para la gestión de ingresos de contratistas.
+ *
+ * @remarks
+ * Este servicio orquesta las operaciones de ingreso y salida, delegando
+ * las validaciones al servicio especializado y usando transacciones para
+ * garantizar la consistencia de los datos.
+ */
 @Injectable()
 export class IngresosService {
+  private readonly logger = new Logger(IngresosService.name);
+
   constructor(
     @InjectRepository(Ingreso)
     private readonly ingresoRepo: Repository<Ingreso>,
 
-    @InjectRepository(Contratista)
-    private readonly contratistaRepo: Repository<Contratista>,
-
-    @InjectRepository(Gafete)
-    private readonly gafeteRepo: Repository<Gafete>,
-
     @InjectRepository(HistorialGafete)
     private readonly historialRepo: Repository<HistorialGafete>,
 
-    @InjectRepository(Usuario)
-    private readonly usuarioRepo: Repository<Usuario>,
+    private readonly dataSource: DataSource,
+    private readonly validationService: IngresoValidationService,
   ) {}
 
-  /** Registrar ingreso */
+  /**
+   * Registra el ingreso de un contratista a las instalaciones.
+   *
+   * @remarks
+   * Esta operación se ejecuta dentro de una transacción para garantizar
+   * que tanto el ingreso como el historial del gafete se registren de forma atómica.
+   *
+   * @param dto - Datos del ingreso a registrar
+   * @param usuarioId - ID del usuario que registra el ingreso
+   * @returns El ingreso registrado con todas sus relaciones cargadas
+   * @throws {ContratistaNoEncontradoException} Si el contratista no existe
+   * @throws {ContratistaEnListaNegraException} Si el contratista está en lista negra
+   * @throws {PraindVencidoException} Si el Praind está vencido
+   * @throws {IngresoActivoExistenteException} Si ya existe un ingreso activo
+   * @throws {GafeteNoDisponibleException} Si el gafete no está disponible
+   * @throws {UsuarioNoEncontradoException} Si el usuario no existe
+   */
   async registrarIngreso(dto: CreateIngresoDto, usuarioId: number): Promise<Ingreso> {
-    const contratista = dto.contratistaId
-      ? await this.contratistaRepo.findOne({
-          where: { id: dto.contratistaId, fechaEliminacion: IsNull() },
-          relations: ['entradasListaNegra', 'ingresos'],
-        })
-      : null;
+    this.logger.log(`Iniciando registro de ingreso para contratista ${dto.contratistaId}`);
 
-    if (contratista) {
-      if (contratista.estaEnListaNegra()) {
-        throw new BadRequestException('El contratista está en lista negra.');
-      }
-      if (contratista.tienePraindVencido()) {
-        throw new BadRequestException('El Praind del contratista está vencido.');
-      }
-      const ingresoActivo = await this.ingresoRepo.findOne({
-        where: { contratista: { id: contratista.id }, dentroFuera: true },
-      });
-      if (ingresoActivo) {
-        throw new BadRequestException('El contratista ya tiene un ingreso activo.');
-      }
-    }
+    // Crear QueryRunner para manejar la transacción manualmente
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    let gafete: Gafete | null | undefined = undefined;
+    try {
+      // ✅ VALIDACIONES (usando servicio dedicado)
+      const contratista = await this.validationService.validarYObtenerContratista(
+        dto.contratistaId,
+      );
+      await this.validationService.validarReglasNegocioIngreso(contratista);
+      const gafete = await this.validationService.validarYObtenerGafete(dto.gafeteId);
+      const usuario = await this.validationService.validarYObtenerUsuario(usuarioId);
 
-    if (dto.gafeteId) {
-      gafete = await this.gafeteRepo.findOne({ where: { id: dto.gafeteId } });
-      if (!gafete) throw new BadRequestException('El gafete no existe.');
-      if (gafete.estado !== EstadoGafete.ACTIVO) {
-        throw new BadRequestException(`El gafete no está disponible. Estado: ${gafete.estado}`);
-      }
-
-      const gafeteEnUso = await this.ingresoRepo.findOne({
-        where: { gafete: { id: gafete.id }, dentroFuera: true },
-      });
-      if (gafeteEnUso) {
-        throw new BadRequestException('El gafete ya está en uso en otro ingreso.');
-      }
-    }
-
-    const usuario = await this.usuarioRepo.findOneBy({ id: usuarioId });
-
-    const ingreso = this.ingresoRepo.create({
-      contratista: contratista ?? undefined,
-      gafete: gafete ?? undefined,
-      tipoAutorizacion: dto.tipoAutorizacion ?? TipoAutorizacion.AUTOMATICA,
-      fechaIngreso: new Date(),
-      dentroFuera: true,
-      observaciones: dto.observaciones ?? undefined,
-      ingresadoPor: usuario ?? undefined,
-    });
-
-    const savedIngreso = await this.ingresoRepo.save(ingreso);
-
-    // Crear historial de gafete si se entregó uno
-    if (gafete) {
-      const historial = this.historialRepo.create({
+      // ✅ CREAR INGRESO (dentro de la transacción)
+      const ingreso = queryRunner.manager.create(Ingreso, {
+        contratista,
         gafete,
-        contratista: contratista ?? undefined,
-        ingreso: savedIngreso ?? undefined,
-        fechaAsignacion: new Date(),
-        estadoDevolucion: EstadoDevolucionGafete.BUENO,
+        tipoAutorizacion: dto.tipoAutorizacion ?? TipoAutorizacion.AUTOMATICA,
+        fechaIngreso: new Date(),
+        dentroFuera: true,
+        observaciones: dto.observaciones,
+        ingresadoPor: usuario,
+        vehiculo: dto.vehiculoId ? ({ id: dto.vehiculoId } as any) : undefined,
+        puntoEntrada: dto.puntoEntradaId ? ({ id: dto.puntoEntradaId } as any) : undefined,
       });
-      await this.historialRepo.save(historial);
-    }
 
-    return savedIngreso;
+      const savedIngreso = await queryRunner.manager.save(Ingreso, ingreso);
+
+      // ✅ CREAR HISTORIAL DE GAFETE (si aplica)
+      if (gafete) {
+        const historial = queryRunner.manager.create(HistorialGafete, {
+          gafete,
+          contratista,
+          ingreso: savedIngreso,
+          fechaAsignacion: new Date(),
+          estadoDevolucion: EstadoDevolucionGafete.BUENO,
+        });
+
+        await queryRunner.manager.save(HistorialGafete, historial);
+        this.logger.log(`Historial de gafete ${gafete.id} creado para ingreso ${savedIngreso.id}`);
+      }
+
+      // ✅ COMMIT de la transacción
+      await queryRunner.commitTransaction();
+
+      this.logger.log(
+        `Ingreso ${savedIngreso.id} registrado exitosamente para contratista ${dto.contratistaId}`,
+      );
+
+      // Cargar relaciones para el retorno
+      return this.findOne(savedIngreso.id);
+    } catch (error) {
+      // ✅ ROLLBACK en caso de error
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`Error al registrar ingreso: ${error.message}`, error.stack);
+      throw error;
+    } finally {
+      // ✅ LIBERAR la conexión
+      await queryRunner.release();
+    }
   }
 
-  /** Registrar salida */
+  /**
+   * Registra la salida de un contratista de las instalaciones.
+   *
+   * @remarks
+   * Esta operación actualiza el ingreso activo y el historial del gafete
+   * dentro de una transacción para mantener la consistencia.
+   *
+   * @param contratistaId - ID del contratista que sale
+   * @param usuarioId - ID del usuario que registra la salida
+   * @param gafeteEstado - Estado del gafete al ser devuelto (opcional)
+   * @returns El ingreso actualizado con la salida registrada
+   * @throws {IngresoActivoNoEncontradoException} Si no existe un ingreso activo
+   * @throws {UsuarioNoEncontradoException} Si el usuario no existe
+   */
   async registrarSalida(
     contratistaId: number,
     usuarioId: number,
     gafeteEstado?: EstadoDevolucionGafete,
   ): Promise<Ingreso> {
-    const ingreso = await this.ingresoRepo.findOne({
-      where: { contratista: { id: contratistaId }, dentroFuera: true },
-      relations: ['contratista', 'gafete'],
-    });
-    if (!ingreso) throw new NotFoundException('No se encontró un ingreso activo.');
+    this.logger.log(`Iniciando registro de salida para contratista ${contratistaId}`);
 
-    const usuario = await this.usuarioRepo.findOneBy({ id: usuarioId });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    ingreso.fechaSalida = new Date();
-    ingreso.dentroFuera = false;
-    ingreso.sacadoPor = usuario;
+    try {
+      // ✅ VALIDACIONES
+      const ingreso = await this.validationService.validarYObtenerIngresoActivo(contratistaId);
+      const usuario = await this.validationService.validarYObtenerUsuario(usuarioId);
 
-    const savedIngreso = await this.ingresoRepo.save(ingreso);
+      // ✅ ACTUALIZAR INGRESO
+      ingreso.fechaSalida = new Date();
+      ingreso.dentroFuera = false;
+      ingreso.sacadoPor = usuario;
 
-    // Actualizar historial de gafete
-    if (ingreso.gafete) {
-      const historial = await this.historialRepo.findOne({
-        where: { ingreso: { id: ingreso.id } },
-      });
-      if (historial) {
-        historial.fechaDevolucion = new Date();
-        historial.estadoDevolucion = gafeteEstado ?? EstadoDevolucionGafete.BUENO;
-        await this.historialRepo.save(historial);
+      const updatedIngreso = await queryRunner.manager.save(Ingreso, ingreso);
+
+      // ✅ ACTUALIZAR HISTORIAL DE GAFETE (si aplica)
+      if (ingreso.gafete) {
+        const historial = await queryRunner.manager.findOne(HistorialGafete, {
+          where: { ingreso: { id: ingreso.id } },
+        });
+
+        if (historial) {
+          historial.fechaDevolucion = new Date();
+          historial.estadoDevolucion = gafeteEstado ?? EstadoDevolucionGafete.BUENO;
+          await queryRunner.manager.save(HistorialGafete, historial);
+          this.logger.log(
+            `Historial de gafete ${ingreso.gafete.id} actualizado para ingreso ${ingreso.id}`,
+          );
+        }
       }
+
+      // ✅ COMMIT
+      await queryRunner.commitTransaction();
+
+      this.logger.log(`Salida registrada exitosamente para contratista ${contratistaId}`);
+
+      return this.findOne(updatedIngreso.id);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`Error al registrar salida: ${error.message}`, error.stack);
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    return savedIngreso;
   }
 
-  /** Obtener todos los ingresos */
-  async findAll(): Promise<Ingreso[]> {
-    return this.ingresoRepo.find({
-      relations: ['contratista', 'gafete', 'ingresadoPor', 'sacadoPor'],
+  /**
+   * Obtiene todos los ingresos con paginación.
+   *
+   * @param page - Número de página (comienza en 1)
+   * @param limit - Cantidad de registros por página
+   * @returns Lista paginada de ingresos con sus relaciones
+   */
+  async findAll(
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<{
+    data: Ingreso[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await this.ingresoRepo.findAndCount({
+      relations: [
+        'contratista',
+        'gafete',
+        'ingresadoPor',
+        'sacadoPor',
+        'vehiculo',
+        'puntoEntrada',
+        'puntoSalida',
+      ],
+      where: { fechaEliminacion: IsNull() },
       order: { id: 'DESC' },
+      take: limit,
+      skip,
     });
+
+    return {
+      data,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  /** Obtener ingreso específico */
+  /**
+   * Obtiene un ingreso específico por su ID.
+   *
+   * @param id - ID del ingreso a buscar
+   * @returns El ingreso con todas sus relaciones cargadas
+   * @throws {IngresoNoEncontradoException} Si el ingreso no existe
+   */
   async findOne(id: number): Promise<Ingreso> {
     const ingreso = await this.ingresoRepo.findOne({
-      where: { id },
-      relations: ['contratista', 'gafete', 'ingresadoPor', 'sacadoPor'],
+      where: { id, fechaEliminacion: IsNull() },
+      relations: [
+        'contratista',
+        'gafete',
+        'ingresadoPor',
+        'sacadoPor',
+        'vehiculo',
+        'puntoEntrada',
+        'puntoSalida',
+      ],
     });
-    if (!ingreso) throw new NotFoundException('Ingreso no encontrado.');
+
+    if (!ingreso) {
+      throw new IngresoNoEncontradoException(id);
+    }
+
     return ingreso;
   }
 
-  /** Actualizar ingreso */
+  /**
+   * Actualiza un ingreso existente.
+   *
+   * @remarks
+   * Este método está restringido para evitar modificaciones no autorizadas.
+   * Solo permite actualizar observaciones y el tipo de autorización.
+   *
+   * @param id - ID del ingreso a actualizar
+   * @param dto - Datos a actualizar
+   * @returns El ingreso actualizado
+   * @throws {IngresoNoEncontradoException} Si el ingreso no existe
+   */
   async update(id: number, dto: UpdateIngresoDto): Promise<Ingreso> {
     const ingreso = await this.findOne(id);
-    Object.assign(ingreso, dto);
-    return this.ingresoRepo.save(ingreso);
+
+    // ⚠️ Solo permitir actualización de campos seguros
+    if (dto.observaciones !== undefined) {
+      ingreso.observaciones = dto.observaciones;
+    }
+    if (dto.tipoAutorizacion !== undefined) {
+      ingreso.tipoAutorizacion = dto.tipoAutorizacion;
+    }
+
+    const updated = await this.ingresoRepo.save(ingreso);
+    this.logger.log(`Ingreso ${id} actualizado exitosamente`);
+
+    return this.findOne(updated.id);
   }
 
-  /** Calcular tiempo del ingreso */
+  /**
+   * Calcula el tiempo de estancia de un ingreso.
+   *
+   * @deprecated Usar el método `calcularDuracion()` de la entidad o el campo en ResponseIngresoDto
+   * @param ingresoId - ID del ingreso
+   * @returns Duración en formato legible
+   */
   async calcularTiempoIngreso(ingresoId: number): Promise<string> {
-    const ingreso = await this.ingresoRepo.findOne({ where: { id: ingresoId } });
-    if (!ingreso) throw new NotFoundException('Ingreso no encontrado');
-    if (!ingreso.fechaIngreso) return 'Fecha de ingreso no disponible';
-
-    const fin = ingreso.fechaSalida ?? new Date();
-    const diffMs = fin.getTime() - ingreso.fechaIngreso.getTime();
-    const horas = Math.floor(diffMs / (1000 * 60 * 60));
-    const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    const segundos = Math.floor((diffMs % (1000 * 60)) / 1000);
-    return `${horas}h ${minutos}m ${segundos}s`;
+    const ingreso = await this.findOne(ingresoId);
+    return ingreso.calcularDuracion();
   }
 }

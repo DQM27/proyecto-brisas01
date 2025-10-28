@@ -7,15 +7,26 @@ import { PuntoAcceso } from '../../../modules/puntos-acceso/entities/punto-acces
 import { Usuario } from '../../../modules/usuarios/entities/usuario.entity';
 import { TipoAutorizacion } from '@common/enums/tipo-autorizacion.enum';
 
+/**
+ * Entidad que representa el registro de ingreso y salida de contratistas.
+ *
+ * @remarks
+ * Esta entidad mantiene un registro completo de todos los ingresos a las instalaciones,
+ * incluyendo información sobre el contratista, vehículo, gafete asignado y puntos de acceso.
+ *
+ * El campo `dentroFuera` indica el estado actual: true = dentro, false = salió.
+ */
 @Entity('ingresos')
+@Index('idx_ingreso_contratista_estado', ['contratista', 'dentroFuera'])
+@Index('idx_ingreso_fecha_ingreso', ['fechaIngreso'])
+@Index('idx_ingreso_gafete_estado', ['gafete', 'dentroFuera'])
 export class Ingreso extends BaseEntity {
   @ManyToOne(() => Contratista, (contratista) => contratista.ingresos, {
     onDelete: 'SET NULL',
-    nullable: true,
+    nullable: false, // 🔴 CRÍTICO: Un ingreso SIEMPRE debe tener contratista
   })
   @JoinColumn({ name: 'contratista_id' })
-  @Index('idx_ingreso_contratista')
-  contratista?: Contratista;
+  contratista: Contratista;
 
   @ManyToOne(() => Vehiculo, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'vehiculo_id' })
@@ -43,27 +54,51 @@ export class Ingreso extends BaseEntity {
     name: 'tipo_autorizacion',
     type: 'simple-enum',
     enum: TipoAutorizacion,
-    nullable: true,
+    default: TipoAutorizacion.AUTOMATICA,
   })
-  tipoAutorizacion?: TipoAutorizacion;
+  tipoAutorizacion: TipoAutorizacion;
 
-  @Column({ name: 'fecha_ingreso', type: 'timestamp', nullable: true })
-  fechaIngreso?: Date;
+  @Column({ name: 'fecha_ingreso', type: 'timestamp' })
+  fechaIngreso: Date;
 
   @Column({ name: 'fecha_salida', type: 'timestamp', nullable: true })
   fechaSalida?: Date;
 
-  @ManyToOne(() => Usuario, { nullable: true })
+  @ManyToOne(() => Usuario, { nullable: false })
   @JoinColumn({ name: 'ingresado_por_id' })
-  ingresadoPor?: Usuario;
+  ingresadoPor: Usuario;
 
   @ManyToOne(() => Usuario, { nullable: true })
   @JoinColumn({ name: 'sacado_por_id' })
-  sacadoPor: Usuario | null;
+  sacadoPor?: Usuario;
 
   @Column({ name: 'dentro_fuera', type: 'boolean', default: true })
+  @Index('idx_ingreso_dentro_fuera')
   dentroFuera: boolean;
 
   @Column({ type: 'text', nullable: true })
   observaciones?: string;
+
+  /**
+   * Calcula la duración de la estancia en las instalaciones.
+   *
+   * @returns Duración en formato legible (ej: "2h 30m 15s")
+   */
+  calcularDuracion(): string {
+    const fin = this.fechaSalida ?? new Date();
+    const diffMs = fin.getTime() - this.fechaIngreso.getTime();
+
+    const horas = Math.floor(diffMs / (1000 * 60 * 60));
+    const minutos = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const segundos = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+    return `${horas}h ${minutos}m ${segundos}s`;
+  }
+
+  /**
+   * Verifica si el ingreso está actualmente activo (contratista dentro).
+   */
+  get estaActivo(): boolean {
+    return this.dentroFuera;
+  }
 }

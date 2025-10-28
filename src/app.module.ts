@@ -20,7 +20,6 @@ import { ScheduleModule } from '@nestjs/schedule';
       isGlobal: true,
     }),
 
-    // 🗄️ Configuración de TypeORM con variables de entorno
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -31,21 +30,20 @@ import { ScheduleModule } from '@nestjs/schedule';
         username: config.get<string>('DB_USER', 'postgres'),
         password: config.get<string>('DB_PASS', ''),
         database: config.get<string>('DB_NAME', 'nestjs_app'),
-        autoLoadEntities: true,
-        synchronize: true, //
-        entities: [__dirname + '/modules/**/*.entity{.ts,.js}'],
+        autoLoadEntities: true, // carga automáticamente las entidades de los módulos
+        synchronize: true,
         logging: false,
       }),
     }),
 
     ScheduleModule.forRoot(),
 
-    // 📦 Módulos del dominio
+    // 📦 Módulos de dominio
     AuthModule,
     EmpresasModule,
     ContratistasModule,
     VehiculosModule,
-    GafetesModule,
+    GafetesModule, // ✅ aquí ya se cargan Gafete y HistorialGafete
     ListaNegraModule,
     PuntoAccesoModule,
     IngresosModule,
