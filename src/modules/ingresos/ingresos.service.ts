@@ -205,6 +205,7 @@ export class IngresosService {
     const [data, total] = await this.ingresoRepo.findAndCount({
       relations: [
         'contratista',
+        'contratista.empresa', // Para tener datos completos del contratista
         'gafete',
         'ingresadoPor',
         'sacadoPor',

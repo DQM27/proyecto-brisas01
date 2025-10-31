@@ -77,11 +77,7 @@ export class IngresoValidationService {
 
     // Validar Praind
     if (contratista.tienePraindVencido()) {
-      // Obtener fecha de vencimiento desde el método o una propiedad alternativa
-      const fechaVencimiento =
-        (contratista as any).praindVencimiento ||
-        (contratista as any).fechaVencimientoPraind ||
-        new Date();
+      const fechaVencimiento = contratista.fechaVencimientoPraind || new Date();
       throw new PraindVencidoException(contratista.id, fechaVencimiento);
     }
 

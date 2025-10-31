@@ -34,7 +34,7 @@ export class ContratistaEnListaNegraException extends IngresoException {
 export class PraindVencidoException extends IngresoException {
   constructor(contratistaId: number, fechaVencimiento: Date) {
     super(
-      `El Praind del contratista ${contratistaId} está vencido desde ${fechaVencimiento.toLocaleDateString()}.`,
+      `El Praind del contratista ${contratistaId} está vencido desde ${fechaVencimiento.toISOString().split('T')[0]}.`,
       'PRAIND_VENCIDO',
     );
   }

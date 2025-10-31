@@ -15,23 +15,34 @@ export class ResponseIngresoDto {
   id: number;
 
   @ApiProperty({
-    example: { id: 10, nombre: 'Juan Pérez' },
+    example: { id: 10, nombreCompleto: 'Juan Carlos Pérez González', cedula: '123456789' },
     description: 'Datos del contratista',
   })
   @Expose()
-  @Transform(({ obj }) =>
-    obj.contratista
-      ? {
-          id: obj.contratista.id,
-          nombre: obj.contratista.nombre,
-          identificacion: obj.contratista.identificacion,
-        }
-      : null,
-  )
+  @Transform(({ obj }) => {
+    if (!obj.contratista) return null;
+
+    const { primerNombre, segundoNombre, primerApellido, segundoApellido, cedula, id } =
+      obj.contratista;
+    const nombreCompleto =
+      `${primerNombre} ${segundoNombre || ''} ${primerApellido} ${segundoApellido || ''}`
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    return {
+      id,
+      nombreCompleto,
+      cedula,
+      primerNombre,
+      primerApellido,
+    };
+  })
   contratista: {
     id: number;
-    nombre: string;
-    identificacion: string;
+    nombreCompleto: string;
+    cedula: string;
+    primerNombre: string;
+    primerApellido: string;
   };
 
   @ApiPropertyOptional({
