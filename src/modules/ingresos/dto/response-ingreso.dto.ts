@@ -1,40 +1,38 @@
+import { TipoAutorizacion } from '@common/enums/tipo-autorizacion.enum';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Transform, Type } from 'class-transformer';
-import { TipoAutorizacion } from '@common/enums/tipo-autorizacion.enum';
 
-/**
- * DTO de respuesta para operaciones de ingreso.
- *
- * @remarks
- * Este DTO mapea correctamente la estructura de la entidad Ingreso,
- * incluyendo relaciones anidadas cuando están cargadas.
- */
 export class ResponseIngresoDto {
   @ApiProperty({ example: 1, description: 'ID del ingreso' })
   @Expose()
   id: number;
 
+  // CONTRATISTA (mantienes tu @Transform original)
   @ApiProperty({
-    example: { id: 10, nombreCompleto: 'Juan Carlos Pérez González', cedula: '123456789' },
-    description: 'Datos del contratista',
+    example: {
+      id: 10,
+      nombreCompleto: 'Juan Carlos Pérez González',
+      cedula: '123456789',
+      primerNombre: 'Juan',
+      primerApellido: 'Pérez',
+      empresa: { id: 5, nombre: 'Constructora ABC S.A.' },
+    },
   })
   @Expose()
   @Transform(({ obj }) => {
     if (!obj.contratista) return null;
-
-    const { primerNombre, segundoNombre, primerApellido, segundoApellido, cedula, id } =
-      obj.contratista;
-    const nombreCompleto =
-      `${primerNombre} ${segundoNombre || ''} ${primerApellido} ${segundoApellido || ''}`
-        .replace(/\s+/g, ' ')
-        .trim();
-
+    const c = obj.contratista;
+    const nombreCompleto = [c.primerNombre, c.segundoNombre, c.primerApellido, c.segundoApellido]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
     return {
-      id,
-      nombreCompleto,
-      cedula,
-      primerNombre,
-      primerApellido,
+      id: c.id,
+      nombreCompleto: nombreCompleto || `Contratista ${c.id}`,
+      cedula: c.cedula,
+      primerNombre: c.primerNombre,
+      primerApellido: c.primerApellido,
+      empresa: c.empresa ? { id: c.empresa.id, nombre: c.empresa.nombre } : null,
     };
   })
   contratista: {
@@ -43,187 +41,91 @@ export class ResponseIngresoDto {
     cedula: string;
     primerNombre: string;
     primerApellido: string;
+    empresa: { id: number; nombre: string } | null;
   };
 
-  @ApiPropertyOptional({
-    example: { id: 5, placa: 'ABC123' },
-    description: 'Datos del vehículo',
-  })
+  @ApiPropertyOptional({ example: { id: 5, numeroPlaca: 'ABC123' } })
   @Expose()
   @Transform(({ obj }) =>
-    obj.vehiculo
-      ? {
-          id: obj.vehiculo.id,
-          placa: obj.vehiculo.placa,
-        }
-      : null,
+    obj.vehiculo ? { id: obj.vehiculo.id, numeroPlaca: obj.vehiculo.numeroPlaca } : null,
   )
-  vehiculo?: {
-    id: number;
-    placa: string;
-  } | null;
+  vehiculo?: { id: number; numeroPlaca: string } | null;
 
-  @ApiPropertyOptional({
-    example: { id: 3, codigo: 'GAF-001' },
-    description: 'Datos del gafete asignado',
-  })
+  @ApiPropertyOptional({ example: { id: 3, codigo: 'GAF-001', estado: 'ACTIVO' } })
   @Expose()
   @Transform(({ obj }) =>
-    obj.gafete
-      ? {
-          id: obj.gafete.id,
-          codigo: obj.gafete.codigo,
-          estado: obj.gafete.estado,
-        }
-      : null,
+    obj.gafete ? { id: obj.gafete.id, codigo: obj.gafete.codigo, estado: obj.gafete.estado } : null,
   )
-  gafete?: {
-    id: number;
-    codigo: string;
-    estado: string;
-  } | null;
+  gafete?: { id: number; codigo: string; estado: string } | null;
 
-  @ApiPropertyOptional({
-    example: { id: 1, nombre: 'Entrada Principal' },
-    description: 'Punto de entrada',
-  })
+  @ApiPropertyOptional({ example: { id: 1, nombre: 'Entrada Principal' } })
   @Expose()
   @Transform(({ obj }) =>
-    obj.puntoEntrada
-      ? {
-          id: obj.puntoEntrada.id,
-          nombre: obj.puntoEntrada.nombre,
-        }
-      : null,
+    obj.puntoEntrada ? { id: obj.puntoEntrada.id, nombre: obj.puntoEntrada.nombre } : null,
   )
-  puntoEntrada?: {
-    id: number;
-    nombre: string;
-  } | null;
+  puntoEntrada?: { id: number; nombre: string } | null;
 
-  @ApiPropertyOptional({
-    example: { id: 2, nombre: 'Salida Trasera' },
-    description: 'Punto de salida',
-  })
+  @ApiPropertyOptional({ example: { id: 2, nombre: 'Salida Trasera' } })
   @Expose()
   @Transform(({ obj }) =>
-    obj.puntoSalida
-      ? {
-          id: obj.puntoSalida.id,
-          nombre: obj.puntoSalida.nombre,
-        }
-      : null,
+    obj.puntoSalida ? { id: obj.puntoSalida.id, nombre: obj.puntoSalida.nombre } : null,
   )
-  puntoSalida?: {
-    id: number;
-    nombre: string;
-  } | null;
+  puntoSalida?: { id: number; nombre: string } | null;
 
-  @ApiProperty({
-    example: TipoAutorizacion.AUTOMATICA,
-    enum: TipoAutorizacion,
-    description: 'Tipo de autorización del ingreso',
-  })
+  @ApiProperty({ example: TipoAutorizacion.AUTOMATICA, enum: TipoAutorizacion })
   @Expose()
   tipoAutorizacion: TipoAutorizacion;
 
-  @ApiProperty({
-    example: '2025-10-28T08:00:00.000Z',
-    description: 'Fecha y hora de ingreso',
-  })
+  @ApiProperty({ example: '2025-10-28T08:00:00.000Z' })
   @Expose()
   @Type(() => Date)
   fechaIngreso: Date;
 
-  @ApiPropertyOptional({
-    example: '2025-10-28T17:00:00.000Z',
-    description: 'Fecha y hora de salida',
-  })
+  @ApiPropertyOptional({ example: '2025-10-28T17:00:00.000Z' })
   @Expose()
   @Type(() => Date)
   fechaSalida?: Date;
 
-  @ApiProperty({
-    example: { id: 5, nombreCompleto: 'María García' },
-    description: 'Usuario que registró el ingreso',
-  })
+  // INGRESADO POR - SIN @Transform, SE CONSTRUYE EN CONTROLADOR
+  @ApiProperty({ example: { id: 1, nombreCompleto: 'Admin Principal' } })
   @Expose()
-  @Transform(({ obj }) =>
-    obj.ingresadoPor
-      ? {
-          id: obj.ingresadoPor.id,
-          nombreCompleto: obj.ingresadoPor.nombreCompleto,
-        }
-      : null,
-  )
   ingresadoPor: {
     id: number;
     nombreCompleto: string;
   };
 
-  @ApiPropertyOptional({
-    example: { id: 7, nombreCompleto: 'Carlos López' },
-    description: 'Usuario que registró la salida',
-  })
+  // SACADO POR - SIN @Transform
+  @ApiPropertyOptional({ example: { id: 1, nombreCompleto: 'Admin Principal' } })
   @Expose()
-  @Transform(({ obj }) =>
-    obj.sacadoPor
-      ? {
-          id: obj.sacadoPor.id,
-          nombreCompleto: obj.sacadoPor.nombreCompleto,
-        }
-      : null,
-  )
   sacadoPor?: {
     id: number;
     nombreCompleto: string;
   } | null;
 
-  @ApiProperty({
-    example: true,
-    description: 'Indica si el contratista está actualmente dentro (true) o ya salió (false)',
-  })
+  @ApiProperty({ example: true })
   @Expose()
   dentroFuera: boolean;
 
-  @ApiPropertyOptional({
-    example: 'Ingreso autorizado por gerencia',
-    description: 'Observaciones adicionales',
-  })
+  @ApiPropertyOptional({ example: 'Ingreso autorizado por gerencia' })
   @Expose()
   observaciones?: string;
 
-  @ApiProperty({
-    example: '2025-10-28T08:00:00.000Z',
-    description: 'Fecha de creación del registro',
-  })
+  @ApiProperty({ example: '2025-10-28T08:00:00.000Z' })
   @Expose()
   @Type(() => Date)
   fechaCreacion: Date;
 
-  @ApiProperty({
-    example: '2025-10-28T08:05:00.000Z',
-    description: 'Fecha de última actualización del registro',
-  })
+  @ApiProperty({ example: '2025-10-28T08:05:00.000Z' })
   @Expose()
   @Type(() => Date)
   fechaActualizacion: Date;
 
-  @ApiPropertyOptional({
-    example: null,
-    description: 'Fecha de eliminación lógica (soft delete)',
-  })
+  @ApiPropertyOptional({ example: null })
   @Expose()
   @Type(() => Date)
   fechaEliminacion?: Date | null;
 
-  /**
-   * Campo calculado: duración de la estancia.
-   */
-  @ApiPropertyOptional({
-    example: '9h 15m 30s',
-    description: 'Duración calculada de la estancia',
-  })
+  @ApiPropertyOptional({ example: '9h 15m 30s' })
   @Expose()
   @Transform(({ obj }) => {
     if (!obj.fechaIngreso) return null;

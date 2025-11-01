@@ -1,10 +1,10 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn, Index } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { Empresa } from '../../../modules/empresas/entities/empresa.entity';
-import { Vehiculo } from '../../../modules/vehiculos/entities/vehiculo.entity';
+import { Gafete } from '../../../modules/gafetes/entities/gafete.entity';
 import { Ingreso } from '../../../modules/ingresos/entities/ingreso.entity';
 import { ListaNegra } from '../../../modules/lista-negra/entities/lista-negra.entity';
-import { Gafete } from '../../../modules/gafetes/entities/gafete.entity';
+import { Vehiculo } from '../../../modules/vehiculos/entities/vehiculo.entity';
 
 @Entity('contratistas')
 export class Contratista extends BaseEntity {
@@ -58,8 +58,9 @@ export class Contratista extends BaseEntity {
   gafetes: Gafete[];
 
   obtenerNombreCompleto(): string {
-    return `${this.primerNombre} ${this.segundoNombre || ''} ${this.primerApellido} ${this.segundoApellido || ''}`
-      .replace(/\s+/g, ' ')
+    return [this.primerNombre, this.segundoNombre, this.primerApellido, this.segundoApellido]
+      .filter(Boolean)
+      .join(' ')
       .trim();
   }
 

@@ -1,40 +1,36 @@
+import { EstadoDevolucionGafete } from '@common/enums/estado-devolucion-gafete.enum';
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Param,
   Body,
-  Query,
-  UseInterceptors,
   ClassSerializerInterceptor,
-  ParseIntPipe,
+  Controller,
   DefaultValuePipe,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Query,
+  UseInterceptors,
 } from '@nestjs/common';
-import { IngresosService } from './ingresos.service';
-import { CreateIngresoDto } from './dto/create-ingreso.dto';
-import { UpdateIngresoDto } from './dto/update-ingreso.dto';
-import { ResponseIngresoDto } from './dto/response-ingreso.dto';
-import { plainToInstance } from 'class-transformer';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
   ApiBadRequestResponse,
   ApiNotFoundResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
 } from '@nestjs/swagger';
-import { EstadoDevolucionGafete } from '@common/enums/estado-devolucion-gafete.enum';
+import { plainToInstance } from 'class-transformer';
+import { CreateIngresoDto } from './dto/create-ingreso.dto';
+import { ResponseIngresoDto } from './dto/response-ingreso.dto';
+import { UpdateIngresoDto } from './dto/update-ingreso.dto';
+import { IngresosService } from './ingresos.service';
 
 /**
  * Controlador para la gestión de ingresos y salidas de contratistas.
- *
- * @remarks
- * Este controlador maneja todas las operaciones relacionadas con el registro
- * de entradas y salidas de contratistas a las instalaciones.
  */
 @ApiTags('ingresos')
 @Controller('ingresos')
@@ -43,11 +39,7 @@ export class IngresosController {
   constructor(private readonly ingresosService: IngresosService) {}
 
   /**
-   * Registra el ingreso de un contratista a las instalaciones.
-   *
-   * @param dto - Datos del ingreso a registrar
-   * @param usuarioId - ID del usuario que registra el ingreso
-   * @returns Datos del ingreso registrado
+   * Registra el ingreso de un contratista.
    */
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -80,18 +72,30 @@ export class IngresosController {
     @Query('usuarioId', ParseIntPipe) usuarioId: number,
   ): Promise<ResponseIngresoDto> {
     const ingreso = await this.ingresosService.registrarIngreso(dto, usuarioId);
-    return plainToInstance(ResponseIngresoDto, ingreso, {
+
+    // Construir nombre completo para ingresadoPor
+    const buildNombre = (user: any) => {
+      if (!user) return null;
+      const nombre = `${user.primerNombre || ''} ${user.primerApellido || ''}`.trim();
+      return {
+        id: user.id,
+        nombreCompleto: nombre || `Usuario ${user.id}`,
+      };
+    };
+
+    const transformed = {
+      ...ingreso,
+      ingresadoPor: buildNombre(ingreso.ingresadoPor),
+      sacadoPor: buildNombre(ingreso.sacadoPor),
+    };
+
+    return plainToInstance(ResponseIngresoDto, transformed, {
       excludeExtraneousValues: true,
     });
   }
 
   /**
-   * Registra la salida de un contratista de las instalaciones.
-   *
-   * @param contratistaId - ID del contratista que sale
-   * @param usuarioId - ID del usuario que registra la salida
-   * @param gafeteEstado - Estado del gafete al ser devuelto (opcional)
-   * @returns Datos del ingreso actualizado con la salida registrada
+   * Registra la salida de un contratista.
    */
   @Patch(':contratistaId/salida')
   @HttpCode(HttpStatus.OK)
@@ -137,17 +141,29 @@ export class IngresosController {
       usuarioId,
       gafeteEstado,
     );
-    return plainToInstance(ResponseIngresoDto, ingreso, {
+
+    const buildNombre = (user: any) => {
+      if (!user) return null;
+      const nombre = `${user.primerNombre || ''} ${user.primerApellido || ''}`.trim();
+      return {
+        id: user.id,
+        nombreCompleto: nombre || `Usuario ${user.id}`,
+      };
+    };
+
+    const transformed = {
+      ...ingreso,
+      ingresadoPor: buildNombre(ingreso.ingresadoPor),
+      sacadoPor: buildNombre(ingreso.sacadoPor),
+    };
+
+    return plainToInstance(ResponseIngresoDto, transformed, {
       excludeExtraneousValues: true,
     });
   }
 
   /**
    * Lista todos los ingresos con paginación.
-   *
-   * @param page - Número de página (por defecto: 1)
-   * @param limit - Registros por página (por defecto: 50, máximo: 100)
-   * @returns Lista paginada de ingresos
    */
   @Get()
   @HttpCode(HttpStatus.OK)
@@ -190,14 +206,28 @@ export class IngresosController {
     page: number;
     totalPages: number;
   }> {
-    // Limitar el máximo de registros por página
     const maxLimit = Math.min(limit, 100);
-
     const result = await this.ingresosService.findAll(page, maxLimit);
+
+    // Construir nombre completo para todos los registros
+    const buildNombre = (user: any): { id: number; nombreCompleto: string } | null => {
+      if (!user) return null;
+      const nombre = `${user.primerNombre || ''} ${user.primerApellido || ''}`.trim();
+      return {
+        id: user.id,
+        nombreCompleto: nombre || `Usuario ${user.id}`,
+      };
+    };
+
+    const dataTransformed = result.data.map((ingreso) => ({
+      ...ingreso,
+      ingresadoPor: buildNombre(ingreso.ingresadoPor),
+      sacadoPor: buildNombre(ingreso.sacadoPor),
+    }));
 
     return {
       ...result,
-      data: plainToInstance(ResponseIngresoDto, result.data, {
+      data: plainToInstance(ResponseIngresoDto, dataTransformed, {
         excludeExtraneousValues: true,
       }),
     };
@@ -205,9 +235,6 @@ export class IngresosController {
 
   /**
    * Obtiene un ingreso específico por su ID.
-   *
-   * @param id - ID del ingreso a buscar
-   * @returns Datos del ingreso encontrado
    */
   @Get(':id')
   @HttpCode(HttpStatus.OK)
@@ -231,20 +258,29 @@ export class IngresosController {
   })
   async findOne(@Param('id', ParseIntPipe) id: number): Promise<ResponseIngresoDto> {
     const ingreso = await this.ingresosService.findOne(id);
-    return plainToInstance(ResponseIngresoDto, ingreso, {
+
+    const buildNombre = (user: any) => {
+      if (!user) return null;
+      const nombre = `${user.primerNombre || ''} ${user.primerApellido || ''}`.trim();
+      return {
+        id: user.id,
+        nombreCompleto: nombre || `Usuario ${user.id}`,
+      };
+    };
+
+    const transformed = {
+      ...ingreso,
+      ingresadoPor: buildNombre(ingreso.ingresadoPor),
+      sacadoPor: buildNombre(ingreso.sacadoPor),
+    };
+
+    return plainToInstance(ResponseIngresoDto, transformed, {
       excludeExtraneousValues: true,
     });
   }
 
   /**
    * Actualiza un ingreso existente.
-   *
-   * @remarks
-   * Solo permite actualizar campos seguros como observaciones y tipo de autorización.
-   *
-   * @param id - ID del ingreso a actualizar
-   * @param dto - Datos a actualizar
-   * @returns Datos del ingreso actualizado
    */
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
@@ -271,23 +307,36 @@ export class IngresosController {
     @Body() dto: UpdateIngresoDto,
   ): Promise<ResponseIngresoDto> {
     const ingreso = await this.ingresosService.update(id, dto);
-    return plainToInstance(ResponseIngresoDto, ingreso, {
+
+    const buildNombre = (user: any) => {
+      if (!user) return null;
+      const nombre = `${user.primerNombre || ''} ${user.primerApellido || ''}`.trim();
+      return {
+        id: user.id,
+        nombreCompleto: nombre || `Usuario ${user.id}`,
+      };
+    };
+
+    const transformed = {
+      ...ingreso,
+      ingresadoPor: buildNombre(ingreso.ingresadoPor),
+      sacadoPor: buildNombre(ingreso.sacadoPor),
+    };
+
+    return plainToInstance(ResponseIngresoDto, transformed, {
       excludeExtraneousValues: true,
     });
   }
 
   /**
    * Calcula la duración de un ingreso.
-   *
-   * @deprecated Este endpoint está obsoleto. Usar el campo `duracion` en ResponseIngresoDto
-   * @param id - ID del ingreso
-   * @returns Duración calculada en formato legible
+   * @deprecated Usar el campo `duracion` en ResponseIngresoDto
    */
   @Get(':id/duracion')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Calcular duración de un ingreso',
-    description: '⚠️ Obsoleto: usar el campo `duracion` en la respuesta del ingreso',
+    description: 'Obsoleto: usar el campo `duracion` en la respuesta del ingreso',
     deprecated: true,
   })
   @ApiParam({

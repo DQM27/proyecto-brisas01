@@ -1,6 +1,6 @@
-import { Entity, Column, Index, BeforeInsert, BeforeUpdate } from 'typeorm';
-import { Exclude } from 'class-transformer';
 import * as bcrypt from 'bcrypt';
+import { Exclude } from 'class-transformer';
+import { BeforeInsert, BeforeUpdate, Column, Entity, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/base/base.entity';
 import { RolUsuario } from '../../../common/enums/rol-usuario.enum';
 
@@ -57,8 +57,9 @@ export class Usuario extends BaseEntity {
   }
 
   obtenerNombreCompleto(): string {
-    return `${this.primerNombre} ${this.segundoNombre || ''} ${this.primerApellido} ${this.segundoApellido || ''}`
-      .replace(/\s+/g, ' ')
+    return [this.primerNombre, this.segundoNombre, this.primerApellido, this.segundoApellido]
+      .filter(Boolean)
+      .join(' ')
       .trim();
   }
 }
