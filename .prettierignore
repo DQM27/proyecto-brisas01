@@ -1,0 +1,29 @@
+{
+  "singleQuote": true,
+  "trailingComma": "all",
+  "semi": true,
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "bracketSpacing": true,
+  "arrowParens": "always",
+  "endOfLine": "auto"
+}
+```
+
+---
+
+### **Paso 3: Crear `.prettierignore`**
+```
+dist
+build
+node_modules
+coverage
+*.config.js
+*.config.mjs
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+.env
+.env.*
+.DS_Store

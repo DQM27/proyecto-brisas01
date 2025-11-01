@@ -1,0 +1,53 @@
+[33mcommit eebafa2f0273e887edb9988bb6bea79f217edaa4[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/auth-jwt[m[33m, [m[1;31morigin/feature/auth-jwt[m[33m)[m
+Author: DQM27 <daniel.bleach1@gmail.com>
+Date:   Fri Oct 31 13:19:28 2025 -0600
+
+    ajuste de modulo de ingresos
+
+[33mcommit 0790e8f25bfe66b357d49ce2e01cb3b30587fcf3[m
+Author: DQM27 <daniel.bleach1@gmail.com>
+Date:   Tue Oct 28 15:02:25 2025 -0600
+
+    seed y mejora de ingresos
+
+[33mcommit c3c822684c61ef0f39d40114a05c325487af1cc4[m
+Author: DQM27 <daniel.bleach1@gmail.com>
+Date:   Tue Oct 28 12:05:02 2025 -0600
+
+    refinamiento de modulos
+
+[33mcommit 5f663f2af7ba0bdab2d44cd0e08aba0b40febbae[m
+Author: DQM27 <daniel.bleach1@gmail.com>
+Date:   Sun Oct 26 14:18:45 2025 -0600
+
+    ajuste de borrado
+
+[33mcommit 55d4c40c6cf80c42a55ba6bd779bc3980aa6d2d2[m
+Author: DQM27 <daniel.bleach1@gmail.com>
+Date:   Sun Oct 26 09:50:58 2025 -0600
+
+    Elimina Redis del AuthService y AuthModule, listo para frontend
+
+[33mcommit c781da68cbf1fc7bfc8502cec29eac42a90a2b22[m
+Author: DQM27 <daniel.bleach1@gmail.com>
+Date:   Sat Oct 25 16:54:21 2025 -0600
+
+    Refactor: actualizar servicio y controlador de gafetes; integración con ingresos
+
+[33mcommit cd0b33bcb4e429c2712dd66eaef4376e6d72859b[m
+Author: DQM27 <daniel.bleach1@gmail.com>
+Date:   Sat Oct 25 14:03:41 2025 -0600
+
+    feat: lista negra funcional con roles y JWT
+
+[33mcommit 7d754cab5a3dbfaee2828a70be4a0c40142f1b70[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/develop[m[33m, [m[1;32mmain[m[33m, [m[1;32mdevelop[m[33m)[m
+Author: DQM27 <daniel.bleach1@gmail.com>
+Date:   Sat Oct 25 10:27:13 2025 -0600
+
+    Preparación para JWT y mejoras en módulos: Auth, usuarios y demás DTOs
+
+[33mcommit f93a47939e7ac4546179bca5431fc65295242bff[m
+Author: DQM27 <daniel.bleach1@gmail.com>
+Date:   Wed Oct 22 00:38:31 2025 -0600
+
+    Initial commit: Sistema de control de acceso backend
