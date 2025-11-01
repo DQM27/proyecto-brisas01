@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ListaNegra } from './entities/lista-negra.entity';
 import { Contratista } from '../contratistas/entities/contratista.entity';
 import { CreateListaNegraDto } from './dto/create-lista-negra.dto';
 import { UpdateListaNegraDto } from './dto/update-lista-negra.dto';
+import { ListaNegra } from './entities/lista-negra.entity';
 
 @Injectable()
 export class ListaNegraService {
@@ -17,6 +17,7 @@ export class ListaNegraService {
   ) {}
 
   async crear(dto: CreateListaNegraDto): Promise<ListaNegra> {
+    // 1️⃣ Verificar que exista el contratista
     const contratista = await this.contratistaRepo.findOne({
       where: { id: dto.contratistaId },
     });
@@ -25,6 +26,16 @@ export class ListaNegraService {
       throw new NotFoundException('Contratista no encontrado.');
     }
 
+    // 2️⃣ VERIFICAR DUPLICADO
+    const existente = await this.listaNegraRepo.findOne({
+      where: { contratista: { id: dto.contratistaId }, entradaActiva: true },
+    });
+
+    if (existente) {
+      throw new ConflictException('Este contratista ya está en lista negra activa.');
+    }
+
+    // 3️⃣ Crear la nueva entrada
     const entrada = this.listaNegraRepo.create({
       grupoRiesgo: dto.grupoRiesgo,
       causa: dto.causa,
@@ -36,6 +47,7 @@ export class ListaNegraService {
 
     return this.listaNegraRepo.save(entrada);
   }
+
   async obtenerTodos(): Promise<ListaNegra[]> {
     return this.listaNegraRepo.find({ relations: ['contratista'] });
   }
